@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  api:
+    build: ./api
+    volumes:
+      - ../assets:/app/assets
+    networks:
+      - app-network
+
+  ui:
+    image: nginx:latest
+    volumes:
+      - ./ui:/usr/share/nginx/html
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

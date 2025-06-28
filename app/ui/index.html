@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welding Symbol Classification</title>
+</head>
+<body>
+    <h1>Welding Symbol Classification</h1>
+    <div>
+        <label for="class-selector">Select a class:</label>
+        <select id="class-selector"></select>
+        <button id="new-example-button">New Example</button>
+    </div>
+    <div>
+        <img id="example-image" src="" alt="Example Image" style="display:none;"/>
+        <canvas id="image-canvas" style="display:none; margin-top: 10px; border: 1px solid black;"></canvas>
+    </div>
+    <div id="image-controls" style="margin-top: 10px; display:none;">
+       <h3>Image Augmentation</h3>
+       <table>
+           <tbody><tr>
+               <td><label for="brightness-slider">Brightness:</label></td>
+               <td><input type="range" id="brightness-slider" min="0" max="200" value="100" style="width: 200px;"></td>
+               <td><span id="brightness-value">100%</span></td>
+           </tr>
+           <tr>
+               <td><label for="contrast-slider">Contrast:</label></td>
+               <td><input type="range" id="contrast-slider" min="0" max="200" value="100" style="width: 200px;"></td>
+               <td><span id="contrast-value">100%</span></td>
+           </tr>
+           <tr>
+               <td><label for="zoom-slider">Zoom:</label></td>
+               <td><input type="range" id="zoom-slider" min="0.1" max="3" value="1" step="0.1" style="width: 200px;"></td>
+               <td><span id="zoom-value">1.0x</span></td>
+           </tr>
+           <tr>
+               <td><label for="noise-slider">Noise:</label></td>
+               <td><input type="range" id="noise-slider" min="0" max="100" value="0" style="width: 200px;"></td>
+               <td><span id="noise-value">0</span></td>
+           </tr>
+       </tbody></table>
+       <button id="reset-button" style="margin-top: 10px;">Reset Augmentations</button>
+   </div>
+    <button id="predict-button" style="margin-top: 10px;">Predict</button>
+    <h2>Prediction: <span id="prediction-result"></span> <span id="confidence-result" style="font-weight: normal;"></span></h2>
+
+    <script>
+        const classSelector = document.getElementById('class-selector');
+        const predictButton = document.getElementById('predict-button');
+        const predictionResult = document.getElementById('prediction-result');
+        const confidenceResult = document.getElementById('confidence-result');
+        const newExampleButton = document.getElementById('new-example-button');
+        const exampleImage = document.getElementById('example-image');
+        const imageCanvas = document.getElementById('image-canvas');
+        const ctx = imageCanvas.getContext('2d');
+        const imageControls = document.getElementById('image-controls');
+
+        const brightnessSlider = document.getElementById('brightness-slider');
+        const contrastSlider = document.getElementById('contrast-slider');
+        const zoomSlider = document.getElementById('zoom-slider');
+        const noiseSlider = document.getElementById('noise-slider');
+
+        const brightnessValue = document.getElementById('brightness-value');
+        const contrastValue = document.getElementById('contrast-value');
+        const zoomValue = document.getElementById('zoom-value');
+        const noiseValue = document.getElementById('noise-value');
+        
+        const resetButton = document.getElementById('reset-button');
+
+        const displayScale = 2.5;
+
+        function applyTransformations() {
+            if (!exampleImage.src || !exampleImage.complete || exampleImage.naturalWidth === 0) return;
+
+            const brightness = brightnessSlider.value;
+            const contrast = contrastSlider.value;
+            const zoom = parseFloat(zoomSlider.value);
+            const noise = parseInt(noiseSlider.value);
+
+            brightnessValue.textContent = `${brightness}%`;
+            contrastValue.textContent = `${contrast}%`;
+            zoomValue.textContent = `${zoom.toFixed(1)}x`;
+            noiseValue.textContent = noise;
+
+            const canvas = imageCanvas;
+            const naturalWidth = exampleImage.naturalWidth;
+            const naturalHeight = exampleImage.naturalHeight;
+
+            // Keep canvas size fixed to the image's natural size
+            canvas.width = naturalWidth * displayScale;
+            canvas.height = naturalHeight * displayScale;
+
+            ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+
+            // Clear the canvas and fill with white before drawing
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (zoom >= 1) { // Zoom in
+                // Calculate the source rectangle (the part of the image to zoom in on)
+                const sWidth = naturalWidth / zoom;
+                const sHeight = naturalHeight / zoom;
+                const sx = (naturalWidth - sWidth) / 2;
+                const sy = (naturalHeight - sHeight) / 2;
+
+                // Draw the zoomed portion to fill the entire canvas
+                ctx.drawImage(exampleImage, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+            } else { // Zoom out
+                // Calculate the destination rectangle
+                const dWidth = canvas.width * zoom;
+                const dHeight = canvas.height * zoom;
+                const dx = (canvas.width - dWidth) / 2;
+                const dy = (canvas.height - dHeight) / 2;
+
+                // Draw the full image into the smaller destination rectangle
+                ctx.drawImage(exampleImage, 0, 0, naturalWidth, naturalHeight, dx, dy, dWidth, dHeight);
+            }
+            
+            ctx.filter = 'none';
+
+            if (noise > 0) {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const pixels = imageData.data;
+                for (let i = 0; i < pixels.length; i += 4) {
+                    if (pixels[i + 3] === 0) continue;
+                    const rand = (Math.random() - 0.5) * noise * 2.55;
+                    pixels[i] = Math.max(0, Math.min(255, pixels[i] + rand));
+                    pixels[i + 1] = Math.max(0, Math.min(255, pixels[i + 1] + rand));
+                    pixels[i + 2] = Math.max(0, Math.min(255, pixels[i + 2] + rand));
+                }
+                ctx.putImageData(imageData, 0, 0);
+            }
+        }
+
+        function resetSliders() {
+            brightnessSlider.value = 100;
+            contrastSlider.value = 100;
+            zoomSlider.value = 1;
+            noiseSlider.value = 0;
+            applyTransformations();
+        }
+
+        async function fetchClasses() {
+            try {
+                const response = await fetch('/api/classes');
+                const data = await response.json();
+                data.classes.forEach(className => {
+                    const option = document.createElement('option');
+                    option.value = className;
+                    option.textContent = className;
+                    classSelector.appendChild(option);
+                });
+                fetchExample();
+            } catch (error) {
+                console.error('Error fetching classes:', error);
+            }
+        }
+
+        async function fetchExample() {
+            const selectedClass = classSelector.value;
+            if (!selectedClass) return;
+
+            try {
+                const response = await fetch(`/api/example/${selectedClass}`);
+                if (response.ok) {
+                    const imageBlob = await response.blob();
+                    const imageUrl = URL.createObjectURL(imageBlob);
+                    exampleImage.src = imageUrl;
+                    exampleImage.onload = () => {
+                        imageCanvas.width = exampleImage.naturalWidth * displayScale;
+                        imageCanvas.height = exampleImage.naturalHeight * displayScale;
+                        imageControls.style.display = 'block';
+                        imageCanvas.style.display = 'block';
+                        resetSliders();
+                    };
+                } else {
+                    console.error('Error fetching example image.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        predictButton.addEventListener('click', async () => {
+            if (!exampleImage.src) {
+                alert('Please select a class and view an example first.');
+                return;
+            }
+            
+            predictionResult.textContent = '...';
+            confidenceResult.textContent = '';
+
+            imageCanvas.toBlob(async (blob) => {
+                const formData = new FormData();
+                formData.append('file', blob, 'example.jpg');
+
+                try {
+                    const response = await fetch('/api/predict', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        predictionResult.textContent = data.prediction;
+                        if (data.confidence !== undefined) {
+                            confidenceResult.textContent = `(${(data.confidence).toFixed(1)}% confidence)`;
+                        }
+                    } else {
+                        predictionResult.textContent = 'Error making prediction.';
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    predictionResult.textContent = 'An error occurred.';
+                }
+            }, 'image/jpeg');
+        });
+
+        classSelector.addEventListener('change', fetchExample);
+        newExampleButton.addEventListener('click', fetchExample);
+        brightnessSlider.addEventListener('input', applyTransformations);
+        contrastSlider.addEventListener('input', applyTransformations);
+        zoomSlider.addEventListener('input', applyTransformations);
+        noiseSlider.addEventListener('input', applyTransformations);
+        resetButton.addEventListener('click', resetSliders);
+
+        window.addEventListener('load', fetchClasses);
+    </script>
+</body>
+</html>
