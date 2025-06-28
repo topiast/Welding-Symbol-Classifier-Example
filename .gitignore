@@ -61,17 +61,3 @@ venv.bak/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-
-# Models
-*.pth
-*.pt
-assets/models/
-
-# Resized dataset
-assets/welding-dataset_64x64_resized/
-
-# Temporary files
-assets/temp_uploaded_image.jpg
-
-# Docker
-.dockerignore
