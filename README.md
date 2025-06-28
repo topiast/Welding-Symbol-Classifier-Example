@@ -2,7 +2,9 @@
 
 This project provides a simple example of creating a welding symbol classifier. It includes data preparation, model training, and a web-based demo for interactive testing. The dataset is created from a single image consisting of basic welding symbols. These symbols are made in to a dataset by applying various data augmentations. The classifier is not aimed to predict welding symbols in real-world images, but rather to demonstrate the process of building a classifier, training it, and deploying it with a web interface.
 
-![Welding Symbol Classifier Demo UI](./app/Screenshot_demo_ui.png)
+## Demo UI - Screenshot
+
+<img src="./app/Screenshot_demo_ui.png" alt="Welding Symbol Classifier Demo UI" style="border: 2px solid black;" />
 
 ## Project Structure
 
